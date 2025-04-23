@@ -16,18 +16,17 @@ def main():
     
     # using API's Scraping Browser as driver 
     with Remote(sbr_connection, options=ChromeOptions()) as driver:
-        print('Connected! Navigating to https://google.com')
-        driver.get('https://google.com')
+        print('Connected! Navigating to the Google Maps page for business')
+        url = "https://www.google.com/maps/place/Scileppi's+at+The+Old+Stone+Church/@39.3720661,-104.8714116,15z/data=!3m1!4b1!4m6!3m5!1s0x876c99212e83407f:0x2a5eaab168c360e4!8m2!3d39.37205!4d-104.8611333!16s%2Fg%2F11f5pfgpyc?entry=ttu&g_ep=EgoyMDI1MDQxNi4xIKXMDSoASAFQAw%3D%3D"
+        driver.get(url)
         
-        # Wait for the search input to appear
-        WebDriverWait(driver, 10).until(
-            EC.presence_of_element_located((By.ID, "APjFqb"))
-        )
+        # Wait for review elements to appear and test for presence
+        wait = WebDriverWait(driver, 10)
+        review_elements = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "wiI7pd")))
 
-        # Do your search like before
-        input_element = driver.find_element(By.ID, "APjFqb")
-        input_element.clear()
-        #input_element.send_keys("scileppi's castle rock" + Keys.ENTER)
+        reviews = [element.text for element in review_elements]
+
+        print(reviews)
 
         # Wait a bit to see what happens
         time.sleep(20)
