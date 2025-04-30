@@ -13,7 +13,8 @@ Scrapes reviews from:
 
 ## Automated Web Scraping
 Utilizes Python libraries:
-- Selenium  
+- Selenium
+## Remote Browsing  
 Utilizes Proxy Infrastructure:
 - Bright Data API Web Scraping Browser
 
