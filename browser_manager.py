@@ -9,8 +9,8 @@ class BrowserSessionManager:
     def __init__(
         self,
         use_brightdata=True,
-        brightdata_username=None,
-        brightdata_password=None,
+        brightdata_username="brd-customer-hl_95d5726c-zone-scraping_browser1",
+        brightdata_password="pf55bbw07stq",
         executable_path="/Users/rachelerickson/repos/review_aggregation_program/chromedriver",  # for local fallback
     ):
         """
