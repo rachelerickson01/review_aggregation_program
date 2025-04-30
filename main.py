@@ -1,4 +1,4 @@
-from selenium.webdriver import Remote, ChromeOptions
+from selenium.webdriver import Remote, ChromeOptions, ActionChains
 from selenium.webdriver.chromium.remote_connection import ChromiumRemoteConnection
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -7,29 +7,70 @@ from selenium.webdriver.support import expected_conditions as EC
 import time
 
 # connecting to BrightData API
-AUTH = 'brd-customer-hl_95d5726c-zone-scraping_browser1:pf55bbw07stq'
-SBR_WEBDRIVER = f'https://{AUTH}@brd.superproxy.io:9515'
+from browser_manager import BrowserSessionManager
+
+manager = BrowserSessionManager(
+    use_brightdata=False,
+)
 
 def main():
-    print('Connecting to Scraping Browser...')
-    sbr_connection = ChromiumRemoteConnection(SBR_WEBDRIVER, 'goog', 'chrome')
     
-    # using API's Scraping Browser as driver 
-    with Remote(sbr_connection, options=ChromeOptions()) as driver:
-        print('Connected! Navigating to the Google Maps page for business')
-        url = "https://www.google.com/maps/place/Scileppi's+at+The+Old+Stone+Church/@39.3720661,-104.8714116,15z/data=!3m1!4b1!4m6!3m5!1s0x876c99212e83407f:0x2a5eaab168c360e4!8m2!3d39.37205!4d-104.8611333!16s%2Fg%2F11f5pfgpyc?entry=ttu&g_ep=EgoyMDI1MDQxNi4xIKXMDSoASAFQAw%3D%3D"
-        driver.get(url)
-        
-        # Wait for review elements to appear and test for presence
-        wait = WebDriverWait(driver, 10)
-        review_elements = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, "wiI7pd")))
+  driver = manager.start_session()
 
-        reviews = [element.text for element in review_elements]
+  # insert url for the google maps page for business location
+  url = "https://www.google.com/maps/place/Bien+Y+Tu/@39.3734649,-104.8628896,17z/data=!3m1!4b1!4m6!3m5!1s0x876c99be1478395b:0x95c8d18822604bc7!8m2!3d39.3734608!4d-104.8603147!16s%2Fg%2F11lymnnzn6?entry=ttu&g_ep=EgoyMDI1MDQyMC4wIKXMDSoASAFQAw%3D%3D"
+  driver.get(url)
+  time.sleep(3)
 
-        print(reviews)
+  wait = WebDriverWait(driver, 20) # setting wait condition
+  totalRev = "button.GQjSyb.fontTitleSmall.rqjGif" # This says "x reviews" and is clickable to navigate to all reviews
+  usernameClassName = ".d4r55" # username locator
+  reviewsClassName = "jftiEf"  # review container locator; use "wiI7pd" for review text
 
-        # Wait a bit to see what happens
-        time.sleep(20)
+  totalRevCount = wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, totalRev))).get_attribute("textContent").split(' ')[0].replace(',','').replace('.','')
+  print(f"Found some reviews! This business currently has {totalRevCount} reviews.") # confirm correct count
+
+  time.sleep(5) # ideally change EC to accomodate clickability
+  wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, totalRev))).click()
+  time.sleep(5)
+
+  mydict = {} # we will make key-value pair from reviewer's username and review content
+  previous_count = 0 # to track reviews that have been accessed as we scroll
+
+  scroll_box = driver.find_element(By.CSS_SELECTOR, "div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde")
+
+  while True: #int(totalRevCount): 
+            
+      #stores a list of review elements if found
+      review_elements = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, reviewsClassName))) #By.CLASS_NAME, "jftiEf"
+      #stores a list of usernames if found
+      reviewer_names = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, usernameClassName)))
+
+      previous_count = len(mydict)
+
+      for rev, name in zip(review_elements, reviewer_names):
+          if name.text not in mydict:  # skip username duplicates -- what if someone leaves multiple reviews??
+              mydict[name.text] = rev.text # allows for reviews with no text -- should I change this since it grabs all the html?
+
+      print(f"Currently found {len(mydict)} reviews")
+      print(mydict)
+      print("---------------------------------------------------------------")
+
+      # to print review text only:
+      # reviews = [element.text for element in review_elements]
+      # print(reviews)
+
+      if len(mydict) == previous_count:
+          print("No new reviews loaded. Exiting scroll loop.")
+          print("Total found: ", len(mydict))
+          break
+
+      # Scroll the container down
+      driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scroll_box)
+      time.sleep(3) # wait a couple seconds for more reviews to load
+
+
+  manager.close_session()
 
 
 if __name__ == '__main__':
