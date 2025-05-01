@@ -5,6 +5,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 import time
+import pandas as pd
 
 # connecting to BrightData API
 from browser_manager import BrowserSessionManager
@@ -34,40 +35,52 @@ def main():
   wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, totalRev))).click()
   time.sleep(5)
 
-  mydict = {} # we will make key-value pair from reviewer's username and review content
+  #mydict = {} # we will make key-value pair from reviewer's username and review content
   previous_count = 0 # to track reviews that have been accessed as we scroll
 
   scroll_box = driver.find_element(By.CSS_SELECTOR, "div.m6QErb.DxyBCb.kA9KIf.dS8AEf.XiKgde")
 
-  while True: #int(totalRevCount): 
+  review_data = []
+
+  while True: 
             
-      #stores a list of review elements if found
+      #stores a list of review elements
       review_elements = wait.until(EC.presence_of_all_elements_located((By.CLASS_NAME, reviewsClassName))) #By.CLASS_NAME, "jftiEf"
-      #stores a list of usernames if found
+      #stores a list of usernames
       reviewer_names = wait.until(EC.presence_of_all_elements_located((By.CSS_SELECTOR, usernameClassName)))
 
-      previous_count = len(mydict)
+      previous_count = len(review_data)
 
       for rev, name in zip(review_elements, reviewer_names):
-          if name.text not in mydict:  # skip username duplicates -- what if someone leaves multiple reviews??
-              mydict[name.text] = rev.text # allows for reviews with no text -- should I change this since it grabs all the html?
+          
+          username = name.text.strip()
+          review_text = rev.text.strip().replace('\n', ' ') # cleans up newlines
+          
+          if not any(r["username"] == username for r in review_data): # checks for duplicates
+             review_data.append({
+                "username": username,
+                "review": review_text
+             })
+          
+          # if name.text not in mydict:  # skip username duplicates -- what if someone leaves multiple reviews??
+          #     mydict[name.text] = rev.text # allows for reviews with no text -- should I change this since it grabs all the html?
 
-      print(f"Currently found {len(mydict)} reviews")
-      print(mydict)
+      print(f"Currently found {len(review_data)} unique reviews")
+      #print(mydict)
       print("---------------------------------------------------------------")
 
-      # to print review text only:
-      # reviews = [element.text for element in review_elements]
-      # print(reviews)
 
-      if len(mydict) == previous_count:
+      if len(review_data) == previous_count:
           print("No new reviews loaded. Exiting scroll loop.")
-          print("Total found: ", len(mydict))
+          print("Total found: ", len(review_data))
           break
 
       # Scroll the container down
       driver.execute_script("arguments[0].scrollTop = arguments[0].scrollHeight", scroll_box)
       time.sleep(3) # wait a couple seconds for more reviews to load
+
+  df = pd.DataFrame(review_data)
+  print(df.head())
 
 
   manager.close_session()
